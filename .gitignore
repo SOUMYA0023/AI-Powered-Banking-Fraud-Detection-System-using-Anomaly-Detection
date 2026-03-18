@@ -18,3 +18,10 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Dataset (large file - download from Kaggle)
+dataset/creditcard.csv
+dataset/*.zip
+
+# Trained model files (regenerate with scripts/train_models.py)
+models/*.pkl

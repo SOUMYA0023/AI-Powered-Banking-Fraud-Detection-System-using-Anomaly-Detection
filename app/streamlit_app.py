@@ -13,8 +13,13 @@ sys.path.insert(0, ROOT)
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
+
+try:
+    import plotly.express as px
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
 
 # Custom fraud detection engine
 from fraud_detection import predict_transaction
@@ -191,31 +196,34 @@ def main():
                 }, model=model_choice)
                 prob = result["fraud_probability"]
 
-                fig = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=prob * 100,
-                    title={"text": "Fraud Risk %"},
-                    gauge={
-                        "axis": {"range": [0, 100]},
-                        "bar": {"color": "#00d4aa"},
-                        "steps": [
-                            {"range": [0, 30], "color": "rgba(0,212,170,0.3)"},
-                            {"range": [30, 70], "color": "rgba(255,193,7,0.3)"},
-                            {"range": [70, 100], "color": "rgba(255,71,87,0.4)"},
-                        ],
-                        "threshold": {
-                            "line": {"color": "red", "width": 4},
-                            "value": 50,
+                if HAS_PLOTLY:
+                    fig = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=prob * 100,
+                        title={"text": "Fraud Risk %"},
+                        gauge={
+                            "axis": {"range": [0, 100]},
+                            "bar": {"color": "#00d4aa"},
+                            "steps": [
+                                {"range": [0, 30], "color": "rgba(0,212,170,0.3)"},
+                                {"range": [30, 70], "color": "rgba(255,193,7,0.3)"},
+                                {"range": [70, 100], "color": "rgba(255,71,87,0.4)"},
+                            ],
+                            "threshold": {
+                                "line": {"color": "red", "width": 4},
+                                "value": 50,
+                            },
                         },
-                    },
-                ))
-                fig.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    font={"color": "#e0e0e0"},
-                    height=280,
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                    ))
+                    fig.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font={"color": "#e0e0e0"},
+                        height=280,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.progress(float(prob), text=f"Fraud Risk: {prob*100:.1f}%")
             except FileNotFoundError:
                 st.info("Train models first to see the gauge.")
 
@@ -224,35 +232,43 @@ def main():
 
     df = load_sample_dataset()
     if df is not None:
-        c1, c2 = st.columns(2)
-        with c1:
-            fig1 = px.histogram(
-                df, x="Amount", color="Class",
-                color_discrete_map={0: "#00d4aa", 1: "#ff4757"},
-                title="Amount Distribution by Class",
-                nbins=40,
-            )
-            fig1.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                font={"color": "#e0e0e0"},
-                legend={"title": "Class", "bgcolor": "rgba(0,0,0,0)"},
-            )
-            st.plotly_chart(fig1, use_container_width=True)
+        if HAS_PLOTLY:
+            c1, c2 = st.columns(2)
+            with c1:
+                fig1 = px.histogram(
+                    df, x="Amount", color="Class",
+                    color_discrete_map={0: "#00d4aa", 1: "#ff4757"},
+                    title="Amount Distribution by Class",
+                    nbins=40,
+                )
+                fig1.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font={"color": "#e0e0e0"},
+                    legend={"title": "Class", "bgcolor": "rgba(0,0,0,0)"},
+                )
+                st.plotly_chart(fig1, use_container_width=True)
 
-        with c2:
-            fraud_counts = df["Class"].value_counts()
-            fig2 = px.pie(
-                values=fraud_counts.values,
-                names=["Legitimate", "Fraud"],
-                color_discrete_sequence=["#00d4aa", "#ff4757"],
-                title="Class Distribution",
-            )
-            fig2.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                font={"color": "#e0e0e0"},
-            )
-            st.plotly_chart(fig2, use_container_width=True)
+            with c2:
+                fraud_counts = df["Class"].value_counts()
+                fig2 = px.pie(
+                    values=fraud_counts.values,
+                    names=["Legitimate", "Fraud"],
+                    color_discrete_sequence=["#00d4aa", "#ff4757"],
+                    title="Class Distribution",
+                )
+                fig2.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font={"color": "#e0e0e0"},
+                )
+                st.plotly_chart(fig2, use_container_width=True)
+        else:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.bar_chart(df.groupby("Class")["Amount"].count())
+            with c2:
+                fraud_counts = df["Class"].value_counts()
+                st.dataframe(fraud_counts.rename(index={0: "Legitimate", 1: "Fraud"}))
     else:
         st.info("Place `creditcard.csv` in the dataset/ folder to view transaction analytics.")
 

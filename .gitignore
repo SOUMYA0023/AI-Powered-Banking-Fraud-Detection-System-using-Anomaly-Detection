@@ -25,3 +25,6 @@ dataset/*.zip
 
 # Trained model files (regenerate with scripts/train_models.py)
 models/*.pkl
+
+# Large local datasets
+data/*.csv
